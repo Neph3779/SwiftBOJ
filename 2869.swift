@@ -10,7 +10,9 @@ let v = abv[2]
 
 var upLengthPerDay = a - b
 var needDay = (v-a) / upLengthPerDay
-var leftDay = (v-a)%upLengthPerDay == 0 ? 1 : 2
+var leftDay = (v-a)%upLengthPerDay == 0 ? 1 : 2 
+// v-a까지 딱 떨어지는 경우라면 하루만에 a만큼 더 올라가니 1일 후에 종료
+// 나머지가 남은 경우라면 두번에 거쳐서 올라가야 한다.
 
 print(needDay + leftDay)
 

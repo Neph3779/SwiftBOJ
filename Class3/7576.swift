@@ -1,145 +1,89 @@
 /*
  7576 토마토
- 토마토가 담긴 행렬의 인덱스를 담은 배열을 만들어서
- 거기에 매번 추가하는 방식으로 해볼까 했다
+ index만을 사용하는 Queue가 너무 사용하기 어려워서
+ BFS로 접근하기보단 깡 구현으로 풀려했었는데 시간초과가 해결되지 않았다
+ 블로그를 참조하던 중 이중스택으로 큐를 구현할 수 있다는 것을 다시 떠올리게 되어서
+ 이중스택큐를 활용해 BFS를 쓰니 문제가 해결되었다.
 
- 현재 코드로는 시간초과 
+ 하룻밤을 count하는 부분에서 현재 queue의 원소 수만큼을 반복하고
+ 이때만 count를 증가시켜주었는데 이 부분의 구현 방법이 생각나지 않았던 기억이 난다.
  */
-import Foundation
 
-final class FileIO {
-    private let buffer: Data
-    private var index: Int = 0
-
-    init(fileHandle: FileHandle = FileHandle.standardInput) {
-        self.buffer = try! fileHandle.readToEnd()! // 인덱스 범위 넘어가는 것 방지
+struct Queue<T> {
+    var enqueue = [T]()
+    var dequeue = [T]()
+    var isEmpty: Bool {
+        return enqueue.isEmpty && dequeue.isEmpty
     }
-
-    @inline(__always) private func read() -> UInt8 {
-        defer {
-            index += 1
-        }
-        guard index < buffer.count else { return 0 }
-
-        return buffer[index]
+    var count: Int {
+        return enqueue.count + dequeue.count
     }
-
-    @inline(__always) func readInt() -> Int {
-        var sum = 0
-        var now = read()
-        var isPositive = true
-
-        while now == 10
-                || now == 32 { now = read() } // 공백과 줄바꿈 무시
-        if now == 45 { isPositive.toggle(); now = read() } // 음수 처리
-        while now >= 48, now <= 57 {
-            sum = sum * 10 + Int(now-48)
-            now = read()
-        }
-
-        return sum * (isPositive ? 1:-1)
+    mutating func push(x: T) {
+        enqueue.append(x)
     }
-
-
-    @inline(__always) func readString() -> String {
-        var str = ""
-        var now = read()
-
-        while now == 10
-                || now == 32 { now = read() } // 공백과 줄바꿈 무시
-
-        while now != 10
-                && now != 32 && now != 0 {
-            str += String(bytes: [now], encoding: .ascii)!
-            now = read()
+    mutating func pop() -> T? {
+        if dequeue.isEmpty {
+            while !enqueue.isEmpty {
+                dequeue.append(enqueue.removeLast())
+            } // dequeue = enqueue.reversed(); enqueue.removeAll()과 같은 작업
         }
-
-        return str
+        return dequeue.removeLast()
     }
 }
 
-struct Index {
-    let i: Int
-    let j: Int
-}
-let fileIO = FileIO()
+let nm = readLine()!.split(separator: " ").map { Int(String($0))! }
+let X = nm[0]
+let Y = nm[1]
+var matrix = [[Int]]()
+var todayDone = [Int]()
+var queue = Queue<(i: Int, j: Int)>()
+let dx = [0, 0, -1, 1] // 상하좌우
+let dy = [-1, 1, 0, 0] // 상하좌우
 
-let n = fileIO.readInt()
-let m = fileIO.readInt()
-var matrix = Array.init(repeating: Array.init(repeating: 0, count: n), count: m)
-var yesterdayDone = [Index]()
-var todayDone = [Index]()
-for i in 0..<m {
-    for j in 0..<n {
-        let number = fileIO.readInt()
-        if number == 1 {
-            yesterdayDone.append(Index(i: i, j: j))
+for y in 0..<Y {
+    let line = readLine()!.split(separator: " ").map { Int(String($0))! }
+    matrix.append(line)
+    for x in 0..<X {
+        if line[x] == 1 {
+            queue.push(x: (i: y, j: x))
         }
-        matrix[i][j] = number
     }
 }
 
-var tempMatrix = matrix
+func addNeighbors(x: Int, y: Int) {
+    for i in 0..<4 {
+        let nextX = x + dx[i]
+        let nextY = y + dy[i]
+
+        if nextX >= 0 && nextX < X
+            && nextY >= 0 && nextY < Y
+            && matrix[nextY][nextX] == 0 {
+            matrix[nextY][nextX] = 1
+            queue.push(x: (i: nextY, j: nextX))
+        }
+    }
+}
 
 func answer() {
     var dayCount = 0
     while true {
-        let todayMatrix = tempMatrix
-        var didNewTomatoDone = false
-
-        for index in 0..<yesterdayDone.count {
-            let i = yesterdayDone[index].i
-            let j = yesterdayDone[index].j
-            if todayMatrix[i][j] == 1 {
-                let nextIUp = i - 1
-                let nextJUp = j
-
-                let nextIDown = i + 1
-                let nextJDown = j
-
-                let nextILeft = i
-                let nextJLeft = j - 1
-
-                let nextIRight = i
-                let nextJRight = j + 1
-
-                if nextIUp >= 0 && tempMatrix[nextIUp][nextJUp] == 0 {
-                    tempMatrix[nextIUp][nextJUp] = 1
-                    todayDone.append(Index(i: nextIUp, j: nextJUp))
-                    didNewTomatoDone = true
-                }
-
-                if nextIDown < m && tempMatrix[nextIDown][nextJDown] == 0 {
-                    tempMatrix[nextIDown][nextJDown] = 1
-                    todayDone.append(Index(i: nextIDown, j: nextJDown))
-                    didNewTomatoDone = true
-                }
-
-                if nextJLeft >= 0 && tempMatrix[nextILeft][nextJLeft] == 0 {
-                    tempMatrix[nextILeft][nextJLeft] = 1
-                    todayDone.append(Index(i: nextILeft, j: nextJLeft))
-                    didNewTomatoDone = true
-                }
-
-                if nextJRight < n && tempMatrix[nextIRight][nextJRight] == 0 {
-                    tempMatrix[nextIRight][nextJRight] = 1
-                    todayDone.append(Index(i: nextIRight, j: nextJRight))
-                    didNewTomatoDone = true
-                }
-
+        for _ in 0..<queue.count {
+            guard let next = queue.pop() else {
+                return
             }
+            addNeighbors(x: next.j, y: next.i)
         }
 
-        if didNewTomatoDone == false {
-            break
-        }
-
+        if queue.isEmpty { break }
         dayCount += 1
-        yesterdayDone = todayDone
-        todayDone = []
-        if dayCount > n * m {
-            print(-1)
-            return
+    }
+
+    for i in 0..<Y {
+        for j in 0..<X {
+            if matrix[i][j] == 0 {
+                dayCount = -1
+                break
+            }
         }
     }
 
@@ -147,3 +91,4 @@ func answer() {
 }
 
 answer()
+
